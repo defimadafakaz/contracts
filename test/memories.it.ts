@@ -1,6 +1,6 @@
 import {deployContract} from "../scripts/deploy";
 import Web3 from "web3";
-import {fromWei} from "./utils/to-wei";
+import {fromWei} from "./utils/wei-utils";
 import {MEMOries} from "../typechain";
 
 jest.setTimeout(120 * 1000);

@@ -40,6 +40,8 @@
     "web3": "^1.6.1"
   },
   "scripts": {
-    "test": "hardhat test:jest"
+    "build": "hardhat compile",
+    "test": "hardhat test:jest",
+    "test:watch": "hardhat test:jest --watch"
   }
 }

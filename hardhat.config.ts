@@ -27,11 +27,15 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 const config: HardhatUserConfig = {
   solidity: "0.7.5",
   networks: {
-    localhost: {
-      url: "localhost:12345", // TODO launch avalanchego and set to it's port
-      accounts:
-        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    hardhat: {
+      gas: "auto",
+      allowUnlimitedContractSize: true,
     },
+    // localhost: {
+    //   url: "localhost:12345", // TODO launch avalanchego and set to it's port
+    //   accounts:
+    //     process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    // },
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,
