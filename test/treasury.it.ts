@@ -1,8 +1,8 @@
-import {deployContract} from "../scripts/deploy";
 import {MEMOries, StakingHelper, TimeERC20Token, TimeStaking, TimeTreasury, AnyswapV5ERC20} from "../typechain";
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import {ethers} from "hardhat";
 import {fromWei, toWei} from "./utils/wei-utils";
+import {deployAll, deployContract} from "../scripts/deployAll";
 
 jest.setTimeout(120 * 1000);
 
@@ -13,7 +13,23 @@ beforeAll(async () => {
     [testAccount, recepientAccount] = await ethers.getSigners();
 })
 
-test.only("should deploy treasury", async () => {
+test.only("should deploy all", async () => {
+    const {
+        distributor,
+        memo,
+        mim,
+        mimBond,
+        time,
+        timeBondingCalculator,
+        staking,
+        stakingWarmup,
+        treasury
+    } = await deployAll();
+
+    console.log(time.address);
+})
+
+test("should deploy treasury", async () => {
     const mimContract = await deployContract<TimeERC20Token>("TimeERC20Token");
     const timeContract = await deployContract<TimeERC20Token>("TimeERC20Token");
     await timeContract.setVault(testAccount.address);

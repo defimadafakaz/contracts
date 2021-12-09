@@ -2,6 +2,8 @@
 pragma solidity 0.7.5;
 pragma abicoder v2;
 
+import "hardhat/console.sol";
+
 interface IOwnable {
   function policy() external view returns (address);
 
@@ -410,7 +412,7 @@ library FixedPoint {
 }
 
 interface ITreasury {
-    function deposit( uint _amount, address _token, uint _profit ) external returns ( bool );
+    function deposit( uint _amount, address _token, uint _profit ) external returns ( uint send_ );
     function valueOf( address _token, uint _amount ) external view returns ( uint value_ );
 }
 
@@ -649,7 +651,7 @@ contract TimeBondDepository is Ownable {
     }
 
 
-    
+
 
     /* ======== USER FUNCTIONS ======== */
 
@@ -668,24 +670,32 @@ contract TimeBondDepository is Ownable {
         require( _depositor != address(0), "Invalid address" );
         require(msg.sender == _depositor || allowedZappers[msg.sender], "LFNA");
         decayDebt();
-        
-        
+
         uint priceInUSD = bondPriceInUSD(); // Stored in bond info
+        console.log("deposit::priceInUSD %s", priceInUSD);
+
         uint nativePrice = _bondPrice();
+        console.log("deposit::nativePrice %s", nativePrice);
 
         require( _maxPrice >= nativePrice, "Slippage limit: more than max price" ); // slippage protection
 
         uint value = treasury.valueOf( address(principle), _amount );
+        console.log("deposit::value %s", value);
         uint payout = payoutFor( value ); // payout to bonder is computed
+        console.log("deposit::payout %s", payout);
         require( totalDebt.add(value) <= terms.maxDebt, "Max capacity reached" );
         require( payout >= 10000000, "Bond too small" ); // must be > 0.01 Time ( underflow protection )
         require( payout <= maxPayout(), "Bond too large"); // size protection because there is no slippage
 
         // profits are calculated
         uint fee = payout.mul( terms.fee )/ 10000 ;
+        console.log("deposit::fee %s", fee);
+
         uint profit = value.sub( payout ).sub( fee );
+        console.log("deposit::profit %s", profit);
 
         uint balanceBefore = Time.balanceOf(address(this));
+        console.log("deposit::balanceBefore %s", balanceBefore);
         /**
             principle is transferred in
             approved and
@@ -694,11 +704,15 @@ contract TimeBondDepository is Ownable {
         principle.safeTransferFrom( msg.sender, address(this), _amount );
         principle.approve( address( treasury ), _amount );
         treasury.deposit( _amount, address(principle), profit );
-        
+
         if ( fee != 0 ) { // fee is transferred to dao 
             Time.safeTransfer( DAO, fee ); 
         }
-        require(balanceBefore.add(profit) == Time.balanceOf(address(this)), "Not enough Time to cover profit");
+        uint256 currentBalance = Time.balanceOf(address(this));
+        console.log("deposit::balanceBefore %s", balanceBefore);
+        console.log("deposit::currentBalance %s", currentBalance);
+        console.log("deposit::profit %s", profit);
+        require(balanceBefore.add(profit) == currentBalance, "Not enough Time to cover profit");
         // total debt is increased
         totalDebt = totalDebt.add( value ); 
                 
@@ -839,7 +853,10 @@ contract TimeBondDepository is Ownable {
      *  @notice calculate current bond premium
      *  @return price_ uint
      */
-    function bondPrice() public view returns ( uint price_ ) {        
+    function bondPrice() public view returns ( uint price_ ) {
+        console.log("controlVariable %s", terms.controlVariable);
+        console.log("debt ratio %s", debtRatio());
+
         price_ = terms.controlVariable.mul( debtRatio() ).add( 1000000000 ) / 1e7;
         if ( price_ < terms.minimumPrice ) {
             price_ = terms.minimumPrice;
@@ -864,6 +881,8 @@ contract TimeBondDepository is Ownable {
      *  @return price_ uint
      */
     function bondPriceInUSD() public view returns ( uint price_ ) {
+        console.log("isLiquidityBond: %s", isLiquidityBond);
+
         if( isLiquidityBond ) {
             price_ = bondPrice().mul( bondCalculator.markdown( address(principle) ) ) / 100 ;
         } else {

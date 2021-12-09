@@ -1,68 +1,74 @@
+/**
+ *Submitted for verification at snowtrace.io on 2021-11-06
+*/
+
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.7.5;
+import "hardhat/console.sol";
 
-library LowGasSafeMath {
-    /// @notice Returns x + y, reverts if sum overflows uint256
-    /// @param x The augend
-    /// @param y The addend
-    /// @return z The sum of x and y
-    function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require((z = x + y) >= x);
+library SafeMath {
+
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        require(c >= a, "SafeMath: addition overflow");
+
+        return c;
     }
 
-    function add32(uint32 x, uint32 y) internal pure returns (uint32 z) {
-        require((z = x + y) >= x);
+    function add32(uint32 a, uint32 b) internal pure returns (uint32) {
+        uint32 c = a + b;
+        require(c >= a, "SafeMath: addition overflow");
+
+        return c;
     }
 
-    /// @notice Returns x - y, reverts if underflows
-    /// @param x The minuend
-    /// @param y The subtrahend
-    /// @return z The difference of x and y
-    function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require((z = x - y) <= x);
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        return sub(a, b, "SafeMath: subtraction overflow");
     }
 
-    function sub32(uint32 x, uint32 y) internal pure returns (uint32 z) {
-        require((z = x - y) <= x);
+    function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        require(b <= a, errorMessage);
+        uint256 c = a - b;
+
+        return c;
     }
 
-    /// @notice Returns x * y, reverts if overflows
-    /// @param x The multiplicand
-    /// @param y The multiplier
-    /// @return z The product of x and y
-    function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require(x == 0 || (z = x * y) / x == y);
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        if (a == 0) {
+            return 0;
+        }
+
+        uint256 c = a * b;
+        require(c / a == b, "SafeMath: multiplication overflow");
+
+        return c;
     }
 
-    function mul32(uint32 x, uint32 y) internal pure returns (uint32 z) {
-        require(x == 0 || (z = x * y) / x == y);
+    function mul32(uint32 a, uint32 b) internal pure returns (uint32) {
+        if (a == 0) {
+            return 0;
+        }
+
+        uint32 c = a * b;
+        require(c / a == b, "SafeMath: multiplication overflow");
+
+        return c;
     }
 
-    /// @notice Returns x + y, reverts if overflows or underflows
-    /// @param x The augend
-    /// @param y The addend
-    /// @return z The sum of x and y
-    function add(int256 x, int256 y) internal pure returns (int256 z) {
-        require((z = x + y) >= x == (y >= 0));
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        return div(a, b, "SafeMath: division by zero");
     }
 
-    /// @notice Returns x - y, reverts if overflows or underflows
-    /// @param x The minuend
-    /// @param y The subtrahend
-    /// @return z The difference of x and y
-    function sub(int256 x, int256 y) internal pure returns (int256 z) {
-        require((z = x - y) <= x == (y >= 0));
-    }
-
-    function div(uint256 x, uint256 y) internal pure returns(uint256 z){
-        require(y > 0);
-        z=x/y;
+    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        require(b > 0, errorMessage);
+        uint256 c = a / b;
+        return c;
     }
 }
 
 library Address {
 
-  function isContract(address account) internal view returns (bool) {
+    function isContract(address account) internal view returns (bool) {
         // This method relies in extcodesize, which returns 0 for contracts in
         // construction, since the code is only stored at the end of the
         // constructor execution.
@@ -74,17 +80,17 @@ library Address {
     }
 
     function functionCall(
-        address target, 
-        bytes memory data, 
+        address target,
+        bytes memory data,
         string memory errorMessage
     ) internal returns (bytes memory) {
         return _functionCallWithValue(target, data, 0, errorMessage);
     }
 
     function _functionCallWithValue(
-        address target, 
-        bytes memory data, 
-        uint256 weiValue, 
+        address target,
+        bytes memory data,
+        uint256 weiValue,
         string memory errorMessage
     ) private returns (bytes memory) {
         require(isContract(target), "Address: call to non-contract");
@@ -107,8 +113,8 @@ library Address {
     }
 
     function _verifyCallResult(
-        bool success, 
-        bytes memory returndata, 
+        bool success,
+        bytes memory returndata,
         string memory errorMessage
     ) private pure returns(bytes memory) {
         if (success) {
@@ -127,61 +133,53 @@ library Address {
     }
 }
 
-contract OwnableData {
-    address public owner;
-    address public pendingOwner;
+interface IOwnable {
+    function manager() external view returns (address);
+
+    function renounceManagement() external;
+
+    function pushManagement( address newOwner_ ) external;
+
+    function pullManagement() external;
 }
 
-contract Ownable is OwnableData {
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+contract Ownable is IOwnable {
 
-    /// @notice `owner` defaults to msg.sender on construction.
-    constructor() {
-        owner = msg.sender;
-        emit OwnershipTransferred(address(0), msg.sender);
+    address internal _owner;
+    address internal _newOwner;
+
+    event OwnershipPushed(address indexed previousOwner, address indexed newOwner);
+    event OwnershipPulled(address indexed previousOwner, address indexed newOwner);
+
+    constructor () {
+        _owner = msg.sender;
+        emit OwnershipPushed( address(0), _owner );
     }
 
-    /// @notice Transfers ownership to `newOwner`. Either directly or claimable by the new pending owner.
-    /// Can only be invoked by the current `owner`.
-    /// @param newOwner Address of the new owner.
-    /// @param direct True if `newOwner` should be set immediately. False if `newOwner` needs to use `claimOwnership`.
-    /// @param renounce Allows the `newOwner` to be `address(0)` if `direct` and `renounce` is True. Has no effect otherwise.
-    function transferOwnership(
-        address newOwner,
-        bool direct,
-        bool renounce
-    ) public onlyOwner {
-        if (direct) {
-            // Checks
-            require(newOwner != address(0) || renounce, "Ownable: zero address");
-
-            // Effects
-            emit OwnershipTransferred(owner, newOwner);
-            owner = newOwner;
-            pendingOwner = address(0);
-        } else {
-            // Effects
-            pendingOwner = newOwner;
-        }
+    function manager() public view override returns (address) {
+        return _owner;
     }
 
-    /// @notice Needs to be called by `pendingOwner` to claim ownership.
-    function claimOwnership() public {
-        address _pendingOwner = pendingOwner;
-
-        // Checks
-        require(msg.sender == _pendingOwner, "Ownable: caller != pending owner");
-
-        // Effects
-        emit OwnershipTransferred(owner, _pendingOwner);
-        owner = _pendingOwner;
-        pendingOwner = address(0);
-    }
-
-    /// @notice Only allows the `owner` to execute the function.
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Ownable: caller is not the owner");
+    modifier onlyManager() {
+        require( _owner == msg.sender, "Ownable: caller is not the owner" );
         _;
+    }
+
+    function renounceManagement() public virtual override onlyManager() {
+        emit OwnershipPushed( _owner, address(0) );
+        _owner = address(0);
+    }
+
+    function pushManagement( address newOwner_ ) public virtual override onlyManager() {
+        require( newOwner_ != address(0), "Ownable: new owner is the zero address");
+        emit OwnershipPushed( _owner, newOwner_ );
+        _newOwner = newOwner_;
+    }
+
+    function pullManagement() public virtual override {
+        require( msg.sender == _newOwner, "Ownable: must be new owner to pull");
+        emit OwnershipPulled( _owner, _newOwner );
+        _owner = _newOwner;
     }
 }
 
@@ -204,7 +202,7 @@ interface IERC20 {
 }
 
 library SafeERC20 {
-    using LowGasSafeMath for uint256;
+    using SafeMath for uint256;
     using Address for address;
 
     function safeTransfer(IERC20 token, address to, uint256 value) internal {
@@ -225,23 +223,23 @@ library SafeERC20 {
 }
 
 interface IERC20Mintable {
-  function mint( uint256 amount_ ) external;
+    function mint( uint256 amount_ ) external;
 
-  function mint( address account_, uint256 ammount_ ) external;
+    function mint( address account_, uint256 ammount_ ) external;
 }
 
-interface ITIMEERC20 is IERC20Mintable, IERC20 {
+interface IOHMERC20 {
     function burnFrom(address account_, uint256 amount_) external;
 }
 
 interface IBondCalculator {
-  function valuation( address pair_, uint amount_ ) external view returns ( uint _value );
+    function valuation( address pair_, uint amount_ ) external view returns ( uint _value );
 }
 
 contract TimeTreasury is Ownable {
 
-    using LowGasSafeMath for uint;
-    using LowGasSafeMath for uint32;
+    using SafeMath for uint;
+    using SafeMath for uint32;
     using SafeERC20 for IERC20;
 
     event Deposit( address indexed token, uint amount, uint value );
@@ -254,22 +252,21 @@ contract TimeTreasury is Ownable {
     event RewardsMinted( address indexed caller, address indexed recipient, uint amount );
     event ChangeQueued( MANAGING indexed managing, address queued );
     event ChangeActivated( MANAGING indexed managing, address activated, bool result );
-    event ChangeLimitAmount( uint256 amount );
 
-    enum MANAGING { 
-        RESERVEDEPOSITOR, 
-        RESERVESPENDER, 
-        RESERVETOKEN, 
-        RESERVEMANAGER, 
-        LIQUIDITYDEPOSITOR, 
-        LIQUIDITYTOKEN, 
-        LIQUIDITYMANAGER, 
-        DEBTOR, 
-        REWARDMANAGER, 
-        SOHM 
+    enum MANAGING {
+        RESERVEDEPOSITOR,
+        RESERVESPENDER,
+        RESERVETOKEN,
+        RESERVEMANAGER,
+        LIQUIDITYDEPOSITOR,
+        LIQUIDITYTOKEN,
+        LIQUIDITYMANAGER,
+        DEBTOR,
+        REWARDMANAGER,
+        SOHM
     }
 
-    ITIMEERC20 public immutable Time;
+    address public immutable Time;
     uint32 public immutable secondsNeededForQueue;
 
     address[] public reserveTokens; // Push only, beware false-positives.
@@ -311,43 +308,31 @@ contract TimeTreasury is Ownable {
     mapping( address => bool ) public isRewardManager;
     mapping( address => uint32 ) public rewardManagerQueue; // Delays changes to mapping.
 
-    mapping( address => uint256 ) public hourlyLimitAmounts; // tracks amounts
-    mapping( address => uint32 ) public hourlyLimitQueue; // Delays changes to mapping.
-
-    uint256 public limitAmount;
-
-    IERC20 public MEMOries;
+    address public MEMOries;
     uint public sOHMQueue; // Delays change to sOHM address
-    
+
     uint public totalReserves; // Risk-free value of all assets
     uint public totalDebt;
 
     constructor (
         address _Time,
         address _MIM,
-        uint32 _secondsNeededForQueue,
-        uint256 _limitAmount
+        uint32 _secondsNeededForQueue
     ) {
         require( _Time != address(0) );
-        Time = ITIMEERC20(_Time);
+        Time = _Time;
 
         isReserveToken[ _MIM ] = true;
         reserveTokens.push( _MIM );
 
-    //    isLiquidityToken[ _OHMDAI ] = true;
-    //    liquidityTokens.push( _OHMDAI );
+        //    isLiquidityToken[ _OHMDAI ] = true;
+        //    liquidityTokens.push( _OHMDAI );
 
         secondsNeededForQueue = _secondsNeededForQueue;
-        limitAmount = _limitAmount;
-    }
-
-    function setLimitAmount(uint amount) external onlyOwner {
-        limitAmount = amount;
-        emit ChangeLimitAmount(limitAmount);
     }
 
     /**
-        @notice allow approved address to deposit an asset for Time
+        @notice allow approved address to deposit an asset for OHM
         @param _amount uint
         @param _token address
         @param _profit uint
@@ -364,10 +349,9 @@ contract TimeTreasury is Ownable {
         }
 
         uint value = valueOf(_token, _amount);
-        // mint Time needed and store amount of rewards for distribution
+        // mint OHM needed and store amount of rewards for distribution
         send_ = value.sub( _profit );
-        limitRequirements(msg.sender, send_);
-        Time.mint( msg.sender, send_ );
+        IERC20Mintable( Time ).mint( msg.sender, send_ );
 
         totalReserves = totalReserves.add( value );
         emit ReservesUpdated( totalReserves );
@@ -376,16 +360,16 @@ contract TimeTreasury is Ownable {
     }
 
     /**
-        @notice allow approved address to burn Time for reserves
+        @notice allow approved address to burn OHM for reserves
         @param _amount uint
         @param _token address
      */
     function withdraw( uint _amount, address _token ) external {
         require( isReserveToken[ _token ], "Not accepted" ); // Only reserves can be used for redemptions
-        require( isReserveSpender[ msg.sender ], "Not approved" );
+        require( isReserveSpender[ msg.sender ] == true, "Not approved" );
 
         uint value = valueOf( _token, _amount );
-        Time.burnFrom( msg.sender, value );
+        IOHMERC20( Time ).burnFrom( msg.sender, value );
 
         totalReserves = totalReserves.sub( value );
         emit ReservesUpdated( totalReserves );
@@ -406,19 +390,18 @@ contract TimeTreasury is Ownable {
 
         uint value = valueOf( _token, _amount );
 
-        uint maximumDebt = MEMOries.balanceOf( msg.sender ); // Can only borrow against sOHM held
-        uint balance = debtorBalance[ msg.sender ];
-        uint availableDebt = maximumDebt.sub( balance );
+        uint maximumDebt = IERC20( MEMOries ).balanceOf( msg.sender ); // Can only borrow against sOHM held
+        uint availableDebt = maximumDebt.sub( debtorBalance[ msg.sender ] );
         require( value <= availableDebt, "Exceeds debt limit" );
-        limitRequirements(msg.sender, value);
-        debtorBalance[ msg.sender ] = balance.add( value );
+
+        debtorBalance[ msg.sender ] = debtorBalance[ msg.sender ].add( value );
         totalDebt = totalDebt.add( value );
 
         totalReserves = totalReserves.sub( value );
         emit ReservesUpdated( totalReserves );
-        
-        IERC20( _token ).safeTransfer( msg.sender, _amount );
-        
+
+        IERC20( _token ).transfer( msg.sender, _amount );
+
         emit CreateDebt( msg.sender, _token, _amount, value );
     }
 
@@ -444,19 +427,18 @@ contract TimeTreasury is Ownable {
     }
 
     /**
-        @notice allow approved address to repay borrowed reserves with Time
+        @notice allow approved address to repay borrowed reserves with OHM
         @param _amount uint
      */
-    function repayDebtWithTime( uint _amount ) external {
-        require( isDebtor[ msg.sender ], "Not approved as debtor" );
-        require( isReserveSpender[ msg.sender ], "Not approved as spender" );
+    function repayDebtWithOHM( uint _amount ) external {
+        require( isDebtor[ msg.sender ], "Not approved" );
 
-        Time.burnFrom( msg.sender, _amount );
+        IOHMERC20( Time ).burnFrom( msg.sender, _amount );
 
         debtorBalance[ msg.sender ] = debtorBalance[ msg.sender ].sub( _amount );
         totalDebt = totalDebt.sub( _amount );
 
-        emit RepayDebt( msg.sender, address(Time), _amount, _amount );
+        emit RepayDebt( msg.sender, Time, _amount, _amount );
     }
 
     /**
@@ -465,16 +447,15 @@ contract TimeTreasury is Ownable {
         @param _amount uint
      */
     function manage( address _token, uint _amount ) external {
-        uint value = valueOf(_token, _amount);
         if( isLiquidityToken[ _token ] ) {
             require( isLiquidityManager[ msg.sender ], "Not approved" );
-            require(value <= excessReserves());
         } else {
-            if (isReserveToken[ _token ]) require(value <= excessReserves());
             require( isReserveManager[ msg.sender ], "Not approved" );
         }
-        
-        limitRequirements(msg.sender, value);
+
+        uint value = valueOf(_token, _amount);
+        require( value <= excessReserves(), "Insufficient reserves" );
+
         totalReserves = totalReserves.sub( value );
         emit ReservesUpdated( totalReserves );
 
@@ -489,28 +470,28 @@ contract TimeTreasury is Ownable {
     function mintRewards( address _recipient, uint _amount ) external {
         require( isRewardManager[ msg.sender ], "Not approved" );
         require( _amount <= excessReserves(), "Insufficient reserves" );
-        limitRequirements(msg.sender, _amount);
-        Time.mint( _recipient, _amount );
+
+        IERC20Mintable( Time ).mint( _recipient, _amount );
 
         emit RewardsMinted( msg.sender, _recipient, _amount );
-    } 
+    }
 
     /**
         @notice returns excess reserves not backing tokens
         @return uint
      */
     function excessReserves() public view returns ( uint ) {
-        return totalReserves.sub( Time.totalSupply().sub( totalDebt ) );
+        return totalReserves.sub( IERC20( Time ).totalSupply().sub( totalDebt ) );
     }
 
     /**
         @notice takes inventory of all tracked assets
         @notice always consolidate to recognized reserves before audit
      */
-    function auditReserves() external onlyOwner {
+    function auditReserves() external onlyManager() {
         uint reserves;
         for( uint i = 0; i < reserveTokens.length; i++ ) {
-            reserves = reserves.add ( 
+            reserves = reserves.add (
                 valueOf( reserveTokens[ i ], IERC20( reserveTokens[ i ] ).balanceOf( address(this) ) )
             );
         }
@@ -525,15 +506,15 @@ contract TimeTreasury is Ownable {
     }
 
     /**
-        @notice returns Time valuation of asset
+        @notice returns OHM valuation of asset
         @param _token address
         @param _amount uint
         @return value_ uint
      */
     function valueOf( address _token, uint _amount ) public view returns ( uint value_ ) {
         if ( isReserveToken[ _token ] ) {
-            // convert amount to match Time decimals
-            value_ = _amount.mul( 10 ** Time.decimals() ).div( 10 ** IERC20( _token ).decimals() );
+            // convert amount to match OHM decimals
+            value_ = _amount.mul( 10 ** IERC20( Time ).decimals() ).div( 10 ** IERC20( _token ).decimals() );
         } else if ( isLiquidityToken[ _token ] ) {
             value_ = IBondCalculator( bondCalculator[ _token ] ).valuation( _token, _amount );
         }
@@ -545,8 +526,8 @@ contract TimeTreasury is Ownable {
         @param _address address
         @return bool
      */
-    function queue( MANAGING _managing, address _address ) external onlyOwner returns ( bool ) {
-        require( _address != address(0), "IA" );
+    function queue( MANAGING _managing, address _address ) external onlyManager() returns ( bool ) {
+        require( _address != address(0) );
         if ( _managing == MANAGING.RESERVEDEPOSITOR ) { // 0
             reserveDepositorQueue[ _address ] = uint32(block.timestamp).add32( secondsNeededForQueue );
         } else if ( _managing == MANAGING.RESERVESPENDER ) { // 1
@@ -581,11 +562,11 @@ contract TimeTreasury is Ownable {
         @return bool
      */
     function toggle(
-        MANAGING _managing, 
-        address _address, 
-        address _calculator 
-    ) external onlyOwner returns ( bool ) {
-        require( _address != address(0), "IA" );
+        MANAGING _managing,
+        address _address,
+        address _calculator
+    ) external onlyManager() returns ( bool ) {
+        require( _address != address(0) );
         bool result;
         if ( _managing == MANAGING.RESERVEDEPOSITOR ) { // 0
             if ( requirements( reserveDepositorQueue, isReserveDepositor, _address ) ) {
@@ -596,7 +577,7 @@ contract TimeTreasury is Ownable {
             }
             result = !isReserveDepositor[ _address ];
             isReserveDepositor[ _address ] = result;
-            
+
         } else if ( _managing == MANAGING.RESERVESPENDER ) { // 1
             if ( requirements( reserveSpenderQueue, isReserveSpender, _address ) ) {
                 reserveSpenderQueue[ _address ] = 0;
@@ -610,12 +591,11 @@ contract TimeTreasury is Ownable {
         } else if ( _managing == MANAGING.RESERVETOKEN ) { // 2
             if ( requirements( reserveTokenQueue, isReserveToken, _address ) ) {
                 reserveTokenQueue[ _address ] = 0;
-                if( !listContains( reserveTokens, _address ) && !listContains( liquidityTokens, _address ) ) {
+                if( !listContains( reserveTokens, _address ) ) {
                     reserveTokens.push( _address );
                 }
             }
             result = !isReserveToken[ _address ];
-            require(!result || !isLiquidityToken[_address], "Do not add to both types of token");
             isReserveToken[ _address ] = result;
 
         } else if ( _managing == MANAGING.RESERVEMANAGER ) { // 3
@@ -643,12 +623,11 @@ contract TimeTreasury is Ownable {
         } else if ( _managing == MANAGING.LIQUIDITYTOKEN ) { // 5
             if ( requirements( LiquidityTokenQueue, isLiquidityToken, _address ) ) {
                 LiquidityTokenQueue[ _address ] = 0;
-                if( !listContains( liquidityTokens, _address ) && !listContains( reserveTokens, _address ) ) {
+                if( !listContains( liquidityTokens, _address ) ) {
                     liquidityTokens.push( _address );
                 }
             }
             result = !isLiquidityToken[ _address ];
-            require(!result || !isReserveToken[_address], "Do not add to both types of token");
             isLiquidityToken[ _address ] = result;
             bondCalculator[ _address ] = _calculator;
 
@@ -684,7 +663,7 @@ contract TimeTreasury is Ownable {
 
         } else if ( _managing == MANAGING.SOHM ) { // 9
             sOHMQueue = 0;
-            MEMOries = IERC20(_address);
+            MEMOries = _address;
             result = true;
 
         } else return false;
@@ -698,35 +677,18 @@ contract TimeTreasury is Ownable {
         @param queue_ mapping( address => uint )
         @param status_ mapping( address => bool )
         @param _address address
-        @return bool 
+        @return bool
      */
-    function requirements( 
-        mapping( address => uint32 ) storage queue_, 
-        mapping( address => bool ) storage status_, 
-        address _address 
+    function requirements(
+        mapping( address => uint32 ) storage queue_,
+        mapping( address => bool ) storage status_,
+        address _address
     ) internal view returns ( bool ) {
         if ( !status_[ _address ] ) {
             require( queue_[ _address ] != 0, "Must queue" );
             require( queue_[ _address ] <= uint32(block.timestamp), "Queue not expired" );
             return true;
         } return false;
-    }
-
-    /**
-        @notice checks LimitRequirements
-        @param _address address
-        @param _address value
-     */
-    function limitRequirements( 
-        address _address,
-        uint256 value
-    ) internal {
-        if (block.timestamp.sub(hourlyLimitQueue[_address]) >= 1 hours)
-        {
-            hourlyLimitAmounts[_address] = limitAmount;
-            hourlyLimitQueue[_address] = uint32(block.timestamp);
-        }
-        hourlyLimitAmounts[_address] = hourlyLimitAmounts[_address].sub(value);
     }
 
     /**

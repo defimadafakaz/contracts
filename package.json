@@ -14,6 +14,9 @@
     "@types/web3": "^1.2.2",
     "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.33.0",
+    "@boringcrypto/boring-solidity": "boringcrypto/BoringSolidity#51616f5bbab53adaf6379428de08c9d8093c63f5",
+    "@sushiswap/bentobox-sdk": "sushiswap/bentobox-sdk#e3f809870b86afbd57e0930662221d2362a160db",
+    "@sushiswap/core": "^1.4.2",
     "chai": "^4.3.4",
     "dotenv": "^10.0.0",
     "eslint": "^7.32.0",
@@ -40,8 +43,9 @@
     "web3": "^1.6.1"
   },
   "scripts": {
+    "deploy:local": "hardhat --network localhost run scripts/deploy.ts",
     "build": "hardhat compile",
-    "test": "hardhat test:jest",
+    "test": "hardhat --network localhost test:jest",
     "test:watch": "hardhat test:jest --watch"
   }
 }
